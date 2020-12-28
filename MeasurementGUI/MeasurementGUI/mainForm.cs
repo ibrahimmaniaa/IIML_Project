@@ -51,7 +51,10 @@ namespace MeasurementGUI
                 if (fileNames.Length > 0)
                 {
                     pictureBox.Image = Image.FromFile(fileNames[0]);
-                    
+                    this.Text = "";
+                    this.Text += "MeasurementGUI -- " + fileNames[0];
+                    pictureBox.BackColor = this.BackColor;
+
                 }
             }
         }
@@ -99,6 +102,7 @@ namespace MeasurementGUI
             
         }
 
+        /**
         Point startPos;         // mouse-down position
         Point endPos;           // current mouse position
         Point currentPos;
@@ -197,7 +201,7 @@ namespace MeasurementGUI
                 Math.Abs(startPos.X - currentPos.X),
                 Math.Abs(startPos.Y - currentPos.Y));
         }
-
+    **/
 
     }
 }
