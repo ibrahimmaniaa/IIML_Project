@@ -35,7 +35,9 @@
             this.zoomBtn = new System.Windows.Forms.Button();
             this.homeBtn = new System.Windows.Forms.Button();
             this.pictureBox = new System.Windows.Forms.PictureBox();
+            this.panel1 = new System.Windows.Forms.Panel();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox)).BeginInit();
+            this.panel1.SuspendLayout();
             this.SuspendLayout();
             // 
             // uploadImgBtn
@@ -58,9 +60,11 @@
             this.startBtn.TabIndex = 4;
             this.startBtn.Text = "START";
             this.startBtn.UseVisualStyleBackColor = true;
+            this.startBtn.Click += new System.EventHandler(this.startBtn_Click);
             // 
             // saveBtn
             // 
+            this.saveBtn.Enabled = false;
             this.saveBtn.FlatStyle = System.Windows.Forms.FlatStyle.Popup;
             this.saveBtn.Image = ((System.Drawing.Image)(resources.GetObject("saveBtn.Image")));
             this.saveBtn.Location = new System.Drawing.Point(167, 786);
@@ -72,6 +76,7 @@
             // 
             // zoomBtn
             // 
+            this.zoomBtn.Enabled = false;
             this.zoomBtn.FlatStyle = System.Windows.Forms.FlatStyle.Popup;
             this.zoomBtn.Image = ((System.Drawing.Image)(resources.GetObject("zoomBtn.Image")));
             this.zoomBtn.Location = new System.Drawing.Point(89, 786);
@@ -80,6 +85,7 @@
             this.zoomBtn.Size = new System.Drawing.Size(50, 50);
             this.zoomBtn.TabIndex = 2;
             this.zoomBtn.UseVisualStyleBackColor = true;
+            this.zoomBtn.Click += new System.EventHandler(this.zoomBtn_Click);
             // 
             // homeBtn
             // 
@@ -91,12 +97,13 @@
             this.homeBtn.Size = new System.Drawing.Size(50, 50);
             this.homeBtn.TabIndex = 1;
             this.homeBtn.UseVisualStyleBackColor = true;
+            this.homeBtn.Click += new System.EventHandler(this.homeBtn_Click);
             // 
             // pictureBox
             // 
             this.pictureBox.BackColor = System.Drawing.SystemColors.ButtonHighlight;
             this.pictureBox.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D;
-            this.pictureBox.Location = new System.Drawing.Point(12, 12);
+            this.pictureBox.Location = new System.Drawing.Point(0, 0);
             this.pictureBox.Name = "pictureBox";
             this.pictureBox.Size = new System.Drawing.Size(768, 768);
             this.pictureBox.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
@@ -104,13 +111,23 @@
             this.pictureBox.TabStop = false;
             this.pictureBox.DragDrop += new System.Windows.Forms.DragEventHandler(this.pictureBox_DragDrop);
             this.pictureBox.DragEnter += new System.Windows.Forms.DragEventHandler(this.pictureBox_DragEnter);
+            this.pictureBox.MouseClick += new System.Windows.Forms.MouseEventHandler(this.pictureBox_MouseClick);
+            // 
+            // panel1
+            // 
+            this.panel1.AutoScroll = true;
+            this.panel1.Controls.Add(this.pictureBox);
+            this.panel1.Location = new System.Drawing.Point(12, 12);
+            this.panel1.Name = "panel1";
+            this.panel1.Size = new System.Drawing.Size(768, 768);
+            this.panel1.TabIndex = 6;
             // 
             // mainForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1080, 843);
-            this.Controls.Add(this.pictureBox);
+            this.Controls.Add(this.panel1);
             this.Controls.Add(this.homeBtn);
             this.Controls.Add(this.zoomBtn);
             this.Controls.Add(this.saveBtn);
@@ -122,6 +139,7 @@
             this.Text = "Form1";
             this.Load += new System.EventHandler(this.mainForm_Load);
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox)).EndInit();
+            this.panel1.ResumeLayout(false);
             this.ResumeLayout(false);
 
         }
@@ -134,6 +152,7 @@
         private System.Windows.Forms.Button zoomBtn;
         private System.Windows.Forms.Button homeBtn;
         private System.Windows.Forms.PictureBox pictureBox;
+        private System.Windows.Forms.Panel panel1;
     }
 }
 
