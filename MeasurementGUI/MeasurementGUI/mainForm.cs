@@ -17,8 +17,14 @@ namespace MeasurementGUI
         private string imgFilePath;
         private Image img;
         private bool zoomEnabled = false;
-        //private bool saveEnabled = false;
         private double zoomFactor;
+        private int[] idx = new int[2];
+
+        private List<Tuple<Rectangle, Rectangle, Color>> endpoints = new List<Tuple<Rectangle, Rectangle, Color>>();
+        
+
+        private bool isMouseDown = false;
+        private bool started = false;
 
 
         public mainForm()
@@ -30,6 +36,14 @@ namespace MeasurementGUI
         {
             this.Text = "MeasurementGUI";
             pictureBox.AllowDrop = true;
+
+            Rectangle rectJointLineL = new Rectangle(225, 456, 10, 10);
+            Rectangle rectJointLineR = new Rectangle(360, 519, 10, 10);
+            Rectangle rectL = new Rectangle(221, 546, 10, 10);
+            Rectangle rectR = new Rectangle(361, 542, 10, 10);
+
+            endpoints.Add(Tuple.Create(rectJointLineL, rectJointLineR, Color.Yellow));
+            endpoints.Add(Tuple.Create(rectL, rectR, Color.Blue));
         }
 
 
@@ -65,13 +79,20 @@ namespace MeasurementGUI
 
             string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
 
-            pictureBox.Image = Image.FromFile(files[0]);
+            img = Image.FromFile(files[0]);
+            pictureBox.Image = img;
+            imgFilePath = files[0];
+            this.Text = "";
+            this.Text += "MeasurementGUI -- " + imgFilePath;
+            pictureBox.BackColor = this.BackColor;
+            zoomFactor = 1;
+            zoomBtn.Enabled = true;
         }
 
         private void pictureBox_DragEnter(object sender, DragEventArgs e)
         {
             if (e.Data.GetDataPresent(DataFormats.Bitmap) &&
-        (e.AllowedEffect & DragDropEffects.Copy) != 0)
+            (e.AllowedEffect & DragDropEffects.Copy) != 0)
             {
                 // Allow this.
                 e.Effect = DragDropEffects.Copy;
@@ -81,8 +102,12 @@ namespace MeasurementGUI
                 // Don't allow any other drop.
                 e.Effect = DragDropEffects.None;
             }
-
-            e.Effect = DragDropEffects.Copy;
+            try
+            {
+                e.Effect = DragDropEffects.Copy;
+            }
+            catch { }
+      
         }
 
         /**************************************************************************************************************************************
@@ -167,15 +192,117 @@ namespace MeasurementGUI
             zoomEnabled = true;
         }
 
+        /**************************************************************************************************************************************
+         **************************************************      Start button    **************************************************************
+         *************************************************************************************************************************************/
+
         private void startBtn_Click(object sender, EventArgs e)
         {
             if (pictureBox.Image != null)
             {
                 saveBtn.Enabled = true;
+                started = true;
+                pictureBox.Refresh();
             }
             
         }
 
-       
+        private void pictureBox_Paint(object sender, PaintEventArgs e)
+        {
+            if (started)
+            {
+                foreach (var line in endpoints)
+                {
+
+                    e.Graphics.FillRectangle(new SolidBrush(line.Item3), line.Item1);
+                    e.Graphics.FillRectangle(new SolidBrush(line.Item3), line.Item2);
+                }
+
+                for (int i=0; i<endpoints.Count; i++)
+                {
+                    Pen p = new Pen(endpoints[i].Item3);
+                    e.Graphics.DrawLine(p, endpoints[i].Item1.Location, endpoints[i].Item2.Location);
+                }
+            }
+            
+        }
+
+        private void pictureBox_MouseDown(object sender, MouseEventArgs e)
+        {
+            isMouseDown = true;
+            idx = GetClickedEndPoint(e.Location);
+        }
+
+
+        private void pictureBox_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (isMouseDown && idx[0] != 999)
+            {
+                Rectangle rect;
+                if (idx[1] == 0) { rect = endpoints[idx[0]].Item1; }
+                else { rect = endpoints[idx[0]].Item2; }
+                
+                rect.Location = e.Location;
+                
+                //Console.WriteLine("@@@@@@@@@  here " + rect.Location);
+
+                if (rect.Right > pictureBox.Width)
+                {
+                    rect.X = pictureBox.Width - rect.Width;
+                }
+                if (rect.Top < 0)
+                {
+                    rect.Y = 0;
+                }
+                if (rect.Left < 0)
+                {
+                    rect.X = 0;
+                }
+                if (rect.Bottom > pictureBox.Height)
+                {
+                    rect.Y = pictureBox.Height - rect.Height;
+                }
+
+                if (idx[1] == 0) { endpoints[idx[0]] = Tuple.Create(rect, endpoints[idx[0]].Item2, endpoints[idx[0]].Item3); }
+                else { endpoints[idx[0]] = Tuple.Create(endpoints[idx[0]].Item1, rect, endpoints[idx[0]].Item3); }
+
+                Refresh();
+            }
+        }
+
+        private void pictureBox_MouseUp(object sender, MouseEventArgs e)
+        {
+            isMouseDown = false;
+        }
+
+
+        /**************************************************************************************************************************************
+         ****************************************************      helpers    *****************************************************************
+         *************************************************************************************************************************************/
+
+        private int[] GetClickedEndPoint(Point location)
+        {
+            int[] idx = { 0, 0 };
+            foreach (var line in endpoints)
+            {
+                if (location.X >= line.Item1.X && location.Y >= line.Item1.Y && location.X <= line.Item1.Right && location.Y <= line.Item1.Bottom)
+                {
+                    idx[1] = 0;
+                    return idx;
+                }
+
+                if (location.X >= line.Item2.X && location.Y >= line.Item2.Y && location.X <= line.Item2.Right && location.Y <= line.Item2.Bottom)
+                {
+                    idx[1] = 1;
+                    return idx;
+                }
+
+                idx[0] += 1;
+            }
+
+            idx = new int[]{ 999, 999};
+            return idx;
+        }
+
     }
 }
