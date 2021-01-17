@@ -7,3 +7,4 @@ C:\Users\z00491jc\Desktop\private\seminar\MeasurementGUI\MeasurementGUI\obj\Rele
 C:\Users\z00491jc\Desktop\private\seminar\MeasurementGUI\MeasurementGUI\obj\Release\MeasurementGUI.csproj.CoreCompileInputs.cache
 C:\Users\z00491jc\Desktop\private\seminar\MeasurementGUI\MeasurementGUI\obj\Release\MeasurementGUI.exe
 C:\Users\z00491jc\Desktop\private\seminar\MeasurementGUI\MeasurementGUI\obj\Release\MeasurementGUI.pdb
+C:\Users\z00491jc\Desktop\private\seminar\MeasurementGUI\MeasurementGUI\obj\Release\MeasurementGUI.csprojAssemblyReference.cache
