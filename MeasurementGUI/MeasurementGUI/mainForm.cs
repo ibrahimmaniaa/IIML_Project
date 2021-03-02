@@ -26,6 +26,7 @@ namespace MeasurementGUI
         private double BoehlerAngle;
         private Cursor zoomCursor;
         private int numFilesInDir;
+        private bool linesShown = false;
 
         private List<Tuple<Rectangle, Rectangle, Color>> endpoints = new List<Tuple<Rectangle, Rectangle, Color>>();
         
@@ -107,6 +108,10 @@ namespace MeasurementGUI
                 string folderName = Path.GetDirectoryName(imgFilePath);
                 numFilesInDir = Directory.GetFiles(folderName, "*.*").Length;
                 checkLastImgTimer.Enabled = true;
+
+                endpoints.Clear();
+                linesShown = false;
+
             }
         }
 
@@ -132,6 +137,9 @@ namespace MeasurementGUI
                 string folderName = Path.GetDirectoryName(imgFilePath);
                 numFilesInDir = Directory.GetFiles(folderName, "*.*").Length;
                 checkLastImgTimer.Enabled = true;
+
+                endpoints.Clear();
+                linesShown = false;
             }
                 
         }
@@ -205,7 +213,7 @@ namespace MeasurementGUI
         {
             if (zoomInEnabled)
             {
-                if (zoomFactor <= 1.6) { zoomFactor += 0.2;  pictureBox.Image = Zoom(img); }
+                if (zoomFactor <= 3) { zoomFactor += 0.5;  pictureBox.Image = Zoom(img); }
                 pictureBox.SizeMode = PictureBoxSizeMode.AutoSize;
                 pictureBox.Dock = DockStyle.None;
                 UpdateLinePosition();
@@ -215,7 +223,7 @@ namespace MeasurementGUI
             {
                 if (zoomFactor > 1)
                 {
-                    zoomFactor -= 0.2;
+                    zoomFactor -= 0.5;
                     pictureBox.Image = Zoom(img);
                     pictureBox.SizeMode = PictureBoxSizeMode.AutoSize;
                     pictureBox.Dock = DockStyle.None;
@@ -434,7 +442,7 @@ namespace MeasurementGUI
 
         private void anglePictureBox_Paint(object sender, PaintEventArgs e)
         {
-            if (started)
+            if (started & linesShown)
             {
                 Point p11 = endpoints[0].Item1.Location;
                 Point p12 = endpoints[0].Item2.Location;
@@ -484,36 +492,47 @@ namespace MeasurementGUI
 
         private void HomeLinePosition()
         {
-            GetInitialLinePosition();      
+            GetInitialLinePosition();
 
-            double imgAspectRatio = (double) img.Width / img.Height;
-            double pictureBoxAspectRatio = (double) pictureBox.Width / pictureBox.Height;
+            linesShown = true;
+
+            //double imgAspectRatio = (double) img.Width / img.Height;
+            //double pictureBoxAspectRatio = (double) pictureBox.Width / pictureBox.Height;
 
             double xOffset = 0;
             double yOffset = 0;
-            double ratio;
+            //double ratio;
 
-            if (pictureBoxAspectRatio > imgAspectRatio)
-            {
-                ratio = (double)pictureBox.Height / img.Height;
-                xOffset = pictureBox.Width - img.Width * ratio;
-                xOffset /= 2;
-            }
-            else
-            {
-                ratio = (double)pictureBox.Width / img.Width; xOffset = 35;
-                yOffset = pictureBox.Height - img.Height * ratio;
-                yOffset /= 2;
-            }
+            //if (pictureBoxAspectRatio > imgAspectRatio)
+            //{
+            //    ratio = (double)pictureBox.Height / img.Height;
+                
+            //    xOffset = pictureBox.Width - img.Width * ratio;
+            //    xOffset /= 2;
+                
+            //    if (pictureBox.Height > img.Height) { ratio = 1 / ratio; xOffset = 0; }
+            //}
+            //else
+            //{
+            //    ratio = (double)pictureBox.Width / img.Width; xOffset = 35;
+               
+            //    yOffset = pictureBox.Height - img.Height * ratio;
+            //    yOffset /= 2;
+                
+            //    if (pictureBox.Width > img.Width) { ratio = 1 / ratio; yOffset = 0; }
+            //}
+
+            double ratioX = (double)pictureBox.Width / img.Width;
+            double ratioY = (double)pictureBox.Height / img.Height;
 
             for (int i=0; i<endpoints.Count(); i++)
             {
-                double x = ratio * endpoints[i].Item1.Location.X;
-                double y = ratio * endpoints[i].Item1.Location.Y;
+                double x = ratioX * endpoints[i].Item1.Location.X;
+                double y = ratioY * endpoints[i].Item1.Location.Y;
                 Rectangle rect1 = new Rectangle((int)(x + xOffset), (int)(y + yOffset), endpoints[i].Item1.Width, endpoints[i].Item1.Height);
 
-                x = ratio * endpoints[i].Item2.Location.X;
-                y = ratio * endpoints[i].Item2.Location.Y;
+                x = ratioX * endpoints[i].Item2.Location.X;
+                y = ratioY * endpoints[i].Item2.Location.Y;
                 Rectangle rect2 = new Rectangle((int)(x + xOffset), (int)(y + yOffset), endpoints[i].Item2.Width, endpoints[i].Item2.Height);
 
                 endpoints[i] = Tuple.Create(rect1, rect2, endpoints[i].Item3);
@@ -523,12 +542,7 @@ namespace MeasurementGUI
 
         private void GetInitialLinePosition()
         {
-            this.UseWaitCursor = true;
-
-            //Rectangle rectJointLineL = new Rectangle(225, 456, 10, 10);
-            //Rectangle rectJointLineR = new Rectangle(360, 519, 10, 10);
-            //Rectangle centerLineDown = new Rectangle(267, 950, 10, 10);
-            //Rectangle centerLineUp = new Rectangle(284, 587, 10, 10);
+            this.UseWaitCursor = true; 
             
             var psi = new ProcessStartInfo();
             //psi.FileName = @"C:\Users\z00491jc\Desktop\private\CV\venv\Scripts\python.exe";
@@ -559,33 +573,79 @@ namespace MeasurementGUI
             Rectangle centerLineDown = new Rectangle(Convert.ToInt16(subs[4]), Convert.ToInt16(subs[5]), 10, 10);
             Rectangle centerLineUp = new Rectangle(Convert.ToInt16(subs[6]), Convert.ToInt16(subs[7]), 10, 10);
 
+            //Rectangle rectJointLineL = new Rectangle(225, 456, 10, 10);
+            //Rectangle rectJointLineR = new Rectangle(360, 519, 10, 10);
+            //Rectangle centerLineDown = new Rectangle(267, 950, 10, 10);
+            //Rectangle centerLineUp = new Rectangle(284, 587, 10, 10);           
+
+            if (rectJointLineL.Right > pictureBox.Width)
+            {
+                rectJointLineL.X = pictureBox.Width - rectJointLineL.Width;
+            }
+            if (rectJointLineL.Top < 0)
+            {
+                rectJointLineL.Y = 0;
+            }
+            if (rectJointLineL.Left < 0)
+            {
+                rectJointLineL.X = 0;
+            }
+            if (rectJointLineL.Bottom > pictureBox.Height)
+            {
+                rectJointLineL.Y = pictureBox.Height - rectJointLineL.Height;
+            }
+            //////////
+            //////////
+
+            if (rectJointLineR.Right > pictureBox.Width)
+            {
+                rectJointLineR.X = pictureBox.Width - rectJointLineR.Width;
+            }
+            if (rectJointLineR.Top < 0)
+            {
+                rectJointLineR.Y = 0;
+            }
+            if (rectJointLineR.Left < 0)
+            {
+                rectJointLineR.X = 0;
+            }
+            if (rectJointLineR.Bottom > pictureBox.Height)
+            {
+                rectJointLineR.Y = pictureBox.Height - rectJointLineR.Height;
+            }
+
             endpoints.Clear();
             endpoints.Add(Tuple.Create(rectJointLineL, rectJointLineR, Color.Yellow));
             endpoints.Add(Tuple.Create(centerLineDown, centerLineUp, Color.Blue));
-
-            Console.WriteLine("Hi here");
+            //Console.WriteLine("Hi here");
 
             this.UseWaitCursor = false;
-
         }
 
         private void UpdateLinePosition()
         {
-            GetInitialLinePosition();
-
-            for (int i = 0; i < endpoints.Count(); i++)
+            if (linesShown)
             {
-                double x = zoomFactor * endpoints[i].Item1.Location.X;
-                double y = zoomFactor * endpoints[i].Item1.Location.Y;
-                Rectangle rect1 = new Rectangle((int)x, (int)y, endpoints[i].Item1.Width, endpoints[i].Item1.Height);
+                //GetInitialLinePosition();
 
-                x = zoomFactor * endpoints[i].Item2.Location.X;
-                y = zoomFactor * endpoints[i].Item2.Location.Y;
-                Rectangle rect2 = new Rectangle((int)x, (int)y, endpoints[i].Item2.Width, endpoints[i].Item2.Height);
+                double ratioX = (double)(img.Width* zoomFactor) /pictureBox.Width ;
+                double ratioY = (double)(img.Height* zoomFactor) /pictureBox.Height;
 
-                endpoints[i] = Tuple.Create(rect1, rect2, endpoints[i].Item3);
+                for (int i = 0; i < endpoints.Count(); i++)
+                {
+                    double x = zoomFactor * endpoints[i].Item1.Location.X;
+                    double y = zoomFactor * endpoints[i].Item1.Location.Y;
+                    Rectangle rect1 = new Rectangle((int)x, (int)y, endpoints[i].Item1.Width, endpoints[i].Item1.Height);
+
+                    x = zoomFactor * endpoints[i].Item2.Location.X;
+                    y = zoomFactor * endpoints[i].Item2.Location.Y;
+                    Rectangle rect2 = new Rectangle((int)x, (int)y, endpoints[i].Item2.Width, endpoints[i].Item2.Height);
+
+                    endpoints[i] = Tuple.Create(rect1, rect2, endpoints[i].Item3);
+                }
+                GetPerpendicularLine();
             }
-            GetPerpendicularLine();
+            
         }
 
         private void GetPerpendicularLine()
@@ -597,12 +657,16 @@ namespace MeasurementGUI
             slope = ((double)(p2.Y - p1.Y) / (double)(p2.X - p1.X));
             if (slope !=0) { slope = -1 / slope; }
             else { slope = 1; }
-            
 
-            double b = p2.Y - slope * p2.X;
+            Point upperPoint;
 
-            Point L = new Point((int) p2.X + 100, (int)(slope * (p2.X + 100) + b));
-            Point R = new Point((int)p2.X - 100, (int)(slope * (p2.X - 100) + b));
+            if (p1.Y > p2.Y) { upperPoint = p2; }
+            else { upperPoint = p1; }
+
+            double b = upperPoint.Y - slope * upperPoint.X;          
+       
+            Point L = new Point((int)upperPoint.X + 100, (int)(slope * (upperPoint.X + 100) + b));
+            Point R = new Point((int)upperPoint.X - 100, (int)(slope * (upperPoint.X - 100) + b));
 
             Rectangle perpendicularLineL = new Rectangle(L.X, L.Y, 1, 1);
             Rectangle perpendicularLineR = new Rectangle(R.X, R.Y, 1, 1);
@@ -693,6 +757,9 @@ namespace MeasurementGUI
                     this.Text += "MeasurementGUI -- " + imgFilePath;
                     pictureBox.BackColor = this.BackColor;
                     zoomFactor = 1;
+
+                    endpoints.Clear();
+                    linesShown = false;
 
                     homeBtn.PerformClick();
                     startBtn.PerformClick();
