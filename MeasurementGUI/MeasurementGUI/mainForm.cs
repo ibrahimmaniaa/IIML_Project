@@ -554,11 +554,11 @@ namespace MeasurementGUI
             //this.UseWaitCursor = true; 
             
             var psi = new ProcessStartInfo();
-            psi.FileName = @"C:\Users\z00491jc\Desktop\private\CV\venv\Scripts\python.exe";
-            //psi.FileName = @"C:\Users\Ahmed Waleed\Desktop\Ibrahim\project\venv\Scripts\python.exe";
+            //psi.FileName = @"C:\Users\z00491jc\Desktop\private\CV\venv\Scripts\python.exe";
+            psi.FileName = @"C:\Users\Ahmed Waleed\Desktop\Ibrahim\project\venv\Scripts\python.exe";
 
-            var script = @"C:\Users\z00491jc\Desktop\private\CV\IIML\Ibrahim\segmentation\predict.py";
-            //var script = @"C:\Users\Ahmed Waleed\Desktop\Ibrahim\project\bone_segmentation_bohler_angle-master\segmentation\predict.py";
+            //var script = @"C:\Users\z00491jc\Desktop\private\CV\IIML\Ibrahim\segmentation\predict.py";
+            var script = @"C:\Users\Ahmed Waleed\Desktop\Ibrahim\project\bone_segmentation_bohler_angle-master\segmentation\predict.py";
 
             psi.Arguments = $"\"{script}\" \"{imgFilePath}\"";
 
