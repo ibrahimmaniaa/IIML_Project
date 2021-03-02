@@ -461,6 +461,7 @@ namespace MeasurementGUI
 
                 BoehlerAngle = BoehlerAngle * 180 / Math.PI;
                 BoehlerAngle = Math.Round(BoehlerAngle, 2);
+                BoehlerAngle = Math.Min(BoehlerAngle, 180-BoehlerAngle);
 
                 using (Font myFont = new Font("Arial", 12))
                 {
