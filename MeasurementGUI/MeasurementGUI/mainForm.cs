@@ -29,6 +29,7 @@ namespace MeasurementGUI
         private bool linesShown = false;
 
         private List<Tuple<Rectangle, Rectangle, Color>> endpoints = new List<Tuple<Rectangle, Rectangle, Color>>();
+        private List<Tuple<Rectangle, Rectangle, Color>> originEndpoints;
         
 
         private bool isMouseDown = false;
@@ -111,6 +112,7 @@ namespace MeasurementGUI
 
                 endpoints.Clear();
                 linesShown = false;
+                started = false;
 
             }
         }
@@ -140,6 +142,7 @@ namespace MeasurementGUI
 
                 endpoints.Clear();
                 linesShown = false;
+                started = false;
             }
                 
         }
@@ -188,10 +191,12 @@ namespace MeasurementGUI
                 {
                     //pictureBox.Image.Save(sfd.FileName, format);
 
-                    Bitmap bmp = new Bitmap(Convert.ToInt32(img.Width * zoomFactor), Convert.ToInt32(img.Height * zoomFactor));
-
+                    //Bitmap bmp = new Bitmap(Convert.ToInt32(img.Width * zoomFactor), Convert.ToInt32(img.Height * zoomFactor));
                     //pictureBox.DrawToBitmap(bmp, new Rectangle(0, 0, Convert.ToInt32(img.Width * zoomFactor), Convert.ToInt32(img.Height * zoomFactor)));
-                    pictureBox.DrawToBitmap(bmp, new Rectangle(0, 0, Convert.ToInt32(img.Width * zoomFactor), Convert.ToInt32(img.Height * zoomFactor)));
+
+                    Bitmap bmp = new Bitmap(Convert.ToInt32(pictureBox.Width), Convert.ToInt32(pictureBox.Height));
+                    pictureBox.DrawToBitmap(bmp, new Rectangle(0, 0, Convert.ToInt32(pictureBox.Width), Convert.ToInt32(pictureBox.Height)));
+
 
                     Bitmap bmp1 = new Bitmap(img.Width, img.Height);
                     var graph = Graphics.FromImage(bmp1);
@@ -221,7 +226,7 @@ namespace MeasurementGUI
 
             if (zoomOutEnabled)
             {
-                if (zoomFactor > 1)
+                if (zoomFactor > 1.5)
                 {
                     zoomFactor -= 0.5;
                     pictureBox.Image = Zoom(img);
@@ -229,7 +234,7 @@ namespace MeasurementGUI
                     pictureBox.Dock = DockStyle.None;
                     UpdateLinePosition();
                 }
-                else if (zoomFactor == 1) { homeBtn.PerformClick(); }
+                else if (zoomFactor == 1.5) { homeBtn.PerformClick(); }
                 
             }
             //pictureBox.Refresh();
@@ -260,7 +265,7 @@ namespace MeasurementGUI
             if (pictureBox.Image != null)
             {
                 pictureBox.Dock = DockStyle.Fill;
-                HomeLinePosition();
+                HomeLinePosition();     
                 pictureBox.Image = img;
                 pictureBox.SizeMode = PictureBoxSizeMode.Zoom;
             }
@@ -492,7 +497,10 @@ namespace MeasurementGUI
 
         private void HomeLinePosition()
         {
-            GetInitialLinePosition();
+            if (linesShown) { endpoints = new List<Tuple<Rectangle, Rectangle, Color>>(originEndpoints); }
+            else if (started){ GetInitialLinePosition(); }
+            else { return; }
+            
 
             linesShown = true;
 
@@ -542,14 +550,14 @@ namespace MeasurementGUI
 
         private void GetInitialLinePosition()
         {
-            this.UseWaitCursor = true; 
+            //this.UseWaitCursor = true; 
             
             var psi = new ProcessStartInfo();
-            //psi.FileName = @"C:\Users\z00491jc\Desktop\private\CV\venv\Scripts\python.exe";
-            psi.FileName = @"C:\Users\Ahmed Waleed\Desktop\Ibrahim\project\venv\Scripts\python.exe";
+            psi.FileName = @"C:\Users\z00491jc\Desktop\private\CV\venv\Scripts\python.exe";
+            //psi.FileName = @"C:\Users\Ahmed Waleed\Desktop\Ibrahim\project\venv\Scripts\python.exe";
 
-            //var script = @"C:\Users\z00491jc\Desktop\private\CV\IIML\Ibrahim\segmentation\predict.py";
-            var script = @"C:\Users\Ahmed Waleed\Desktop\Ibrahim\project\bone_segmentation_bohler_angle-master\segmentation\predict.py";
+            var script = @"C:\Users\z00491jc\Desktop\private\CV\IIML\Ibrahim\segmentation\predict.py";
+            //var script = @"C:\Users\Ahmed Waleed\Desktop\Ibrahim\project\bone_segmentation_bohler_angle-master\segmentation\predict.py";
 
             psi.Arguments = $"\"{script}\" \"{imgFilePath}\"";
 
@@ -576,60 +584,23 @@ namespace MeasurementGUI
             //Rectangle rectJointLineL = new Rectangle(225, 456, 10, 10);
             //Rectangle rectJointLineR = new Rectangle(360, 519, 10, 10);
             //Rectangle centerLineDown = new Rectangle(267, 950, 10, 10);
-            //Rectangle centerLineUp = new Rectangle(284, 587, 10, 10);           
-
-            if (rectJointLineL.Right > pictureBox.Width)
-            {
-                rectJointLineL.X = pictureBox.Width - rectJointLineL.Width;
-            }
-            if (rectJointLineL.Top < 0)
-            {
-                rectJointLineL.Y = 0;
-            }
-            if (rectJointLineL.Left < 0)
-            {
-                rectJointLineL.X = 0;
-            }
-            if (rectJointLineL.Bottom > pictureBox.Height)
-            {
-                rectJointLineL.Y = pictureBox.Height - rectJointLineL.Height;
-            }
-            //////////
-            //////////
-
-            if (rectJointLineR.Right > pictureBox.Width)
-            {
-                rectJointLineR.X = pictureBox.Width - rectJointLineR.Width;
-            }
-            if (rectJointLineR.Top < 0)
-            {
-                rectJointLineR.Y = 0;
-            }
-            if (rectJointLineR.Left < 0)
-            {
-                rectJointLineR.X = 0;
-            }
-            if (rectJointLineR.Bottom > pictureBox.Height)
-            {
-                rectJointLineR.Y = pictureBox.Height - rectJointLineR.Height;
-            }
+            //Rectangle centerLineUp = new Rectangle(284, 587, 10, 10);   
 
             endpoints.Clear();
             endpoints.Add(Tuple.Create(rectJointLineL, rectJointLineR, Color.Yellow));
             endpoints.Add(Tuple.Create(centerLineDown, centerLineUp, Color.Blue));
-            //Console.WriteLine("Hi here");
 
-            this.UseWaitCursor = false;
+            originEndpoints = new List<Tuple<Rectangle, Rectangle, Color>>(endpoints);
+
+            //Console.WriteLine("Hi here");
+            //this.UseWaitCursor = false;
         }
 
         private void UpdateLinePosition()
         {
             if (linesShown)
             {
-                //GetInitialLinePosition();
-
-                double ratioX = (double)(img.Width* zoomFactor) /pictureBox.Width ;
-                double ratioY = (double)(img.Height* zoomFactor) /pictureBox.Height;
+                endpoints = new List<Tuple<Rectangle, Rectangle, Color>>(originEndpoints);
 
                 for (int i = 0; i < endpoints.Count(); i++)
                 {
@@ -742,11 +713,12 @@ namespace MeasurementGUI
                 numFilesInDir = currNumFilesInDir;
 
                 var directory = new DirectoryInfo(folderName);
-                var myFile = (from f in directory.GetFiles("*.png")
+                var myFile = (from f in directory.GetFiles()
                               orderby f.LastWriteTime descending
                               select f).First();
 
                 string temp = myFile.FullName;
+
                 if (temp.EndsWith("jpg") || temp.EndsWith("jpeg") || temp.EndsWith("png") || temp.EndsWith("bmp"))
                 {
                     imgFilePath = temp;
@@ -763,7 +735,7 @@ namespace MeasurementGUI
 
                     homeBtn.PerformClick();
                     startBtn.PerformClick();
-                    homeBtn.PerformClick();
+                    //homeBtn.PerformClick();
                 }
             }
         }
