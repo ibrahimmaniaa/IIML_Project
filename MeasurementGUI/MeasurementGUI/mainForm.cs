@@ -9,6 +9,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.IO;
+using System.Reflection;
+using System.Diagnostics;
 
 namespace MeasurementGUI
 {
@@ -16,15 +19,31 @@ namespace MeasurementGUI
     {
         private string imgFilePath;
         private Image img;
-        private bool zoomEnabled = false;
+        private bool zoomInEnabled = false;
+        private bool zoomOutEnabled = false;
         private double zoomFactor;
         private int[] idx = new int[2];
+        private double BoehlerAngle;
+        private Cursor zoomCursor;
+        private int numFilesInDir;
 
         private List<Tuple<Rectangle, Rectangle, Color>> endpoints = new List<Tuple<Rectangle, Rectangle, Color>>();
         
 
         private bool isMouseDown = false;
         private bool started = false;
+
+        private Size formOriginSize;
+        private Rectangle panelOriginRect;
+        private Rectangle pictureBoxOriginRect;
+        private Rectangle uploadBtnOriginRect;
+        private Rectangle startBtnOriginRect;
+        private Rectangle homeBtnOriginRect;
+        private Rectangle zoomInBtnOriginRect;
+        private Rectangle zoomOutBtnOriginRect;
+        private Rectangle saveBtnOriginRect;
+        private Rectangle anglePictureBoxOriginRect;
+        private Rectangle showLinesOriginRect;
 
 
         public mainForm()
@@ -37,15 +56,28 @@ namespace MeasurementGUI
             this.Text = "MeasurementGUI";
             pictureBox.AllowDrop = true;
 
-            Rectangle rectJointLineL = new Rectangle(225, 456, 10, 10);
-            Rectangle rectJointLineR = new Rectangle(360, 519, 10, 10);
-            Rectangle rectL = new Rectangle(221, 546, 10, 10);
-            Rectangle rectR = new Rectangle(361, 542, 10, 10);
+            this.MinimumSize = this.Size;
 
-            endpoints.Add(Tuple.Create(rectJointLineL, rectJointLineR, Color.Yellow));
-            endpoints.Add(Tuple.Create(rectL, rectR, Color.Blue));
+            //GetInitialLinePosition();
+
+            formOriginSize = this.Size;
+            panelOriginRect = new Rectangle(panel1.Location.X, panel1.Location.Y, panel1.Width, panel1.Height);
+            pictureBoxOriginRect = new Rectangle(pictureBox.Location.X, pictureBox.Location.Y, pictureBox.Width, pictureBox.Height);
+            uploadBtnOriginRect = new Rectangle(uploadImgBtn.Location.X, uploadImgBtn.Location.Y, uploadImgBtn.Width, uploadImgBtn.Height);
+            startBtnOriginRect = new Rectangle(startBtn.Location.X, startBtn.Location.Y, startBtn.Width, startBtn.Height);
+            homeBtnOriginRect = new Rectangle(homeBtn.Location.X, homeBtn.Location.Y, homeBtn.Width, homeBtn.Height);
+            zoomInBtnOriginRect = new Rectangle(zoomInBtn.Location.X, zoomInBtn.Location.Y, zoomInBtn.Width, zoomInBtn.Height);
+            zoomOutBtnOriginRect = new Rectangle(zoomOutBtn.Location.X, zoomOutBtn.Location.Y, zoomOutBtn.Width, zoomOutBtn.Height);
+            saveBtnOriginRect = new Rectangle(saveBtn.Location.X, saveBtn.Location.Y, saveBtn.Width, saveBtn.Height);
+            anglePictureBoxOriginRect = new Rectangle(anglePictureBox.Location.X, anglePictureBox.Location.Y, anglePictureBox.Width, anglePictureBox.Height);
+            showLinesOriginRect = new Rectangle(showLinesCheckBox.Location.X, showLinesCheckBox.Location.Y, showLinesCheckBox.Width, showLinesCheckBox.Height);
+
+            Assembly myAssembly = Assembly.GetExecutingAssembly();
+            Stream myStream = myAssembly.GetManifestResourceStream("MeasurementGUI.res.zoom.cur");
+            
+            zoomCursor = new Cursor(myStream);
+
         }
-
 
         /**************************************************************************************************************************************
          ************************************************       upload image        ***********************************************************
@@ -68,25 +100,40 @@ namespace MeasurementGUI
                 this.Text += "MeasurementGUI -- " + imgFilePath;
                 pictureBox.BackColor = this.BackColor;
                 zoomFactor = 1;
-                zoomBtn.Enabled = true;
+                zoomInBtn.Enabled = true;
+                zoomOutBtn.Enabled = true;
+                startBtn.Focus();
+
+                string folderName = Path.GetDirectoryName(imgFilePath);
+                numFilesInDir = Directory.GetFiles(folderName, "*.*").Length;
+                checkLastImgTimer.Enabled = true;
             }
         }
 
         private void pictureBox_DragDrop(object sender, DragEventArgs e)
         {
             zoomFactor = 1;
-            zoomBtn.Enabled = true;
+            zoomInBtn.Enabled = true;
 
             string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
 
-            img = Image.FromFile(files[0]);
-            pictureBox.Image = img;
-            imgFilePath = files[0];
-            this.Text = "";
-            this.Text += "MeasurementGUI -- " + imgFilePath;
-            pictureBox.BackColor = this.BackColor;
-            zoomFactor = 1;
-            zoomBtn.Enabled = true;
+            string temp = files[0];
+            if (temp.EndsWith("jpg") || temp.EndsWith("jpeg") || temp.EndsWith("png") || temp.EndsWith("bmp"))
+            {
+                imgFilePath = temp;
+                img = Image.FromFile(imgFilePath);
+                pictureBox.Image = img;
+                this.Text = "";
+                this.Text += "MeasurementGUI -- " + imgFilePath;
+                pictureBox.BackColor = this.BackColor;
+                zoomFactor = 1;
+                zoomInBtn.Enabled = true;
+
+                string folderName = Path.GetDirectoryName(imgFilePath);
+                numFilesInDir = Directory.GetFiles(folderName, "*.*").Length;
+                checkLastImgTimer.Enabled = true;
+            }
+                
         }
 
         private void pictureBox_DragEnter(object sender, DragEventArgs e)
@@ -122,20 +169,32 @@ namespace MeasurementGUI
                 Title = "Save an Image File"
             };
 
-            string[] subs = imgFilePath.Split('\\');
-            sfd.FileName = subs[subs.Length - 1];
+            string[] subs1 = imgFilePath.Split('\\');
+            string[] subs2 = subs1[subs1.Length - 1].Split('.');
+            sfd.FileName = subs2[0] + "_" + BoehlerAngle + "_degrees";
 
             ImageFormat format = ImageFormat.Png;
             if (sfd.ShowDialog() == System.Windows.Forms.DialogResult.OK)
             {
                 if (!string.IsNullOrEmpty(sfd.FileName))
                 {
-                    pictureBox.Image.Save(sfd.FileName, format);
-                }
+                    //pictureBox.Image.Save(sfd.FileName, format);
+
+                    Bitmap bmp = new Bitmap(Convert.ToInt32(img.Width * zoomFactor), Convert.ToInt32(img.Height * zoomFactor));
+
+                    //pictureBox.DrawToBitmap(bmp, new Rectangle(0, 0, Convert.ToInt32(img.Width * zoomFactor), Convert.ToInt32(img.Height * zoomFactor)));
+                    pictureBox.DrawToBitmap(bmp, new Rectangle(0, 0, Convert.ToInt32(img.Width * zoomFactor), Convert.ToInt32(img.Height * zoomFactor)));
+
+                    Bitmap bmp1 = new Bitmap(img.Width, img.Height);
+                    var graph = Graphics.FromImage(bmp1);
+                    graph.DrawImage(bmp, new Rectangle(0, 0, bmp1.Width, bmp1.Height));
+
+                    bmp1.Save(sfd.FileName);
+                }                
             }
+
         }
             
-        
 
         /**************************************************************************************************************************************
          *********************************************         zoom functions       ***********************************************************
@@ -144,12 +203,29 @@ namespace MeasurementGUI
 
         private void pictureBox_MouseClick(object sender, MouseEventArgs e)
         {
-            if (zoomEnabled)
+            if (zoomInEnabled)
             {
-                zoomFactor += 0.2;
-                if (zoomFactor <= 1.6) { pictureBox.Image = Zoom(pictureBox.Image); }
+                if (zoomFactor <= 1.6) { zoomFactor += 0.2;  pictureBox.Image = Zoom(img); }
                 pictureBox.SizeMode = PictureBoxSizeMode.AutoSize;
-            }         
+                pictureBox.Dock = DockStyle.None;
+                UpdateLinePosition();
+            }
+
+            if (zoomOutEnabled)
+            {
+                if (zoomFactor > 1)
+                {
+                    zoomFactor -= 0.2;
+                    pictureBox.Image = Zoom(img);
+                    pictureBox.SizeMode = PictureBoxSizeMode.AutoSize;
+                    pictureBox.Dock = DockStyle.None;
+                    UpdateLinePosition();
+                }
+                else if (zoomFactor == 1) { homeBtn.PerformClick(); }
+                
+            }
+            //pictureBox.Refresh();
+            Refresh();
         }
 
         private Image Zoom(Image img)
@@ -175,21 +251,61 @@ namespace MeasurementGUI
         {
             if (pictureBox.Image != null)
             {
+                pictureBox.Dock = DockStyle.Fill;
+                HomeLinePosition();
                 pictureBox.Image = img;
                 pictureBox.SizeMode = PictureBoxSizeMode.Zoom;
             }
-            zoomBtn.FlatStyle = FlatStyle.Popup;
+            zoomInBtn.FlatStyle = FlatStyle.Popup;
             pictureBox.Cursor = Cursors.Default;
             pictureBox.Size = panel1.Size;
-            zoomEnabled = false;
+            zoomInEnabled = false;
+            zoomOutEnabled = false;
             zoomFactor = 1;
+
+            pictureBox.Refresh();
         }
 
-        private void zoomBtn_Click(object sender, EventArgs e)
+        private void zoomInBtn_Click(object sender, EventArgs e)
         {
-            zoomBtn.FlatStyle = FlatStyle.Flat;
-            pictureBox.Cursor = new Cursor("C:\\Users\\z00491jc\\Desktop\\private\\seminar\\MeasurementGUI\\zoom.cur");
-            zoomEnabled = true;
+            if (zoomInBtn.FlatStyle == FlatStyle.Flat)
+            {
+                zoomInBtn.FlatStyle = FlatStyle.Popup;
+                pictureBox.Cursor = Cursors.Default;
+                zoomInEnabled = false;
+                startBtn.Focus();
+            }
+            else
+            {
+                zoomInBtn.FlatStyle = FlatStyle.Flat;
+                pictureBox.Cursor = zoomCursor;
+                zoomInEnabled = true;
+                zoomOutEnabled = false;
+                zoomOutBtn.FlatStyle = FlatStyle.Popup;
+                startBtn.Focus();
+            }
+
+        }
+
+        private void zoomOutBtn_Click(object sender, EventArgs e)
+        {
+            if (zoomOutBtn.FlatStyle == FlatStyle.Flat)
+            {
+                zoomOutBtn.FlatStyle = FlatStyle.Popup;
+                pictureBox.Cursor = Cursors.Default;
+                zoomOutEnabled = false;
+                startBtn.Focus();
+            }
+            else
+            {
+                zoomOutBtn.FlatStyle = FlatStyle.Flat;
+                pictureBox.Cursor = zoomCursor;
+                zoomOutEnabled = true;
+                zoomInEnabled = false;
+                zoomInBtn.FlatStyle = FlatStyle.Popup;
+                startBtn.Focus();
+            }
+            
         }
 
         /**************************************************************************************************************************************
@@ -202,29 +318,43 @@ namespace MeasurementGUI
             {
                 saveBtn.Enabled = true;
                 started = true;
+                if (zoomInEnabled | zoomOutEnabled)
+                {
+                    UpdateLinePosition();
+                }
+                else { HomeLinePosition(); }
+                
                 pictureBox.Refresh();
+
+                anglePictureBox.Refresh();
             }
-            
         }
 
         private void pictureBox_Paint(object sender, PaintEventArgs e)
         {
             if (started)
             {
-                foreach (var line in endpoints)
+                if (showLinesCheckBox.Checked)
                 {
+                    foreach (var line in endpoints)
+                    {
+                        try
+                        {
+                            e.Graphics.FillRectangle(new SolidBrush(line.Item3), line.Item1);
+                            e.Graphics.FillRectangle(new SolidBrush(line.Item3), line.Item2);
+                        }
+                        catch { }
 
-                    e.Graphics.FillRectangle(new SolidBrush(line.Item3), line.Item1);
-                    e.Graphics.FillRectangle(new SolidBrush(line.Item3), line.Item2);
-                }
+                    }
 
-                for (int i=0; i<endpoints.Count; i++)
-                {
-                    Pen p = new Pen(endpoints[i].Item3);
-                    e.Graphics.DrawLine(p, endpoints[i].Item1.Location, endpoints[i].Item2.Location);
+                    for (int i = 0; i < endpoints.Count; i++)
+                    {
+                        Pen p = new Pen(endpoints[i].Item3);
+                        e.Graphics.DrawLine(p, endpoints[i].Item1.Location, endpoints[i].Item2.Location);
+                    }
                 }
             }
-            
+
         }
 
         private void pictureBox_MouseDown(object sender, MouseEventArgs e)
@@ -233,18 +363,15 @@ namespace MeasurementGUI
             idx = GetClickedEndPoint(e.Location);
         }
 
-
         private void pictureBox_MouseMove(object sender, MouseEventArgs e)
         {
-            if (isMouseDown && idx[0] != 999)
+            if (isMouseDown && idx[0] != 999 && !zoomInEnabled && !zoomOutEnabled)
             {
                 Rectangle rect;
                 if (idx[1] == 0) { rect = endpoints[idx[0]].Item1; }
                 else { rect = endpoints[idx[0]].Item2; }
                 
                 rect.Location = e.Location;
-                
-                //Console.WriteLine("@@@@@@@@@  here " + rect.Location);
 
                 if (rect.Right > pictureBox.Width)
                 {
@@ -266,6 +393,7 @@ namespace MeasurementGUI
                 if (idx[1] == 0) { endpoints[idx[0]] = Tuple.Create(rect, endpoints[idx[0]].Item2, endpoints[idx[0]].Item3); }
                 else { endpoints[idx[0]] = Tuple.Create(endpoints[idx[0]].Item1, rect, endpoints[idx[0]].Item3); }
 
+                GetPerpendicularLine();
                 Refresh();
             }
         }
@@ -303,6 +431,296 @@ namespace MeasurementGUI
             idx = new int[]{ 999, 999};
             return idx;
         }
+
+        private void anglePictureBox_Paint(object sender, PaintEventArgs e)
+        {
+            if (started)
+            {
+                Point p11 = endpoints[0].Item1.Location;
+                Point p12 = endpoints[0].Item2.Location;
+                Point p21 = endpoints[2].Item2.Location;
+                Point p22 = endpoints[2].Item1.Location;
+
+                double[] vector1 = { p11.X - p12.X, p11.Y - p12.Y };
+                double[] vector2 = { p21.X - p22.X, p21.Y - p22.Y };
+        
+                BoehlerAngle = Math.Acos(DotProduct(vector1, vector2)/(Magnitude(vector1)*Magnitude(vector2)) );
+
+                BoehlerAngle = BoehlerAngle * 180 / Math.PI;
+                BoehlerAngle = Math.Round(BoehlerAngle, 2);
+
+                using (Font myFont = new Font("Arial", 12))
+                {
+                    e.Graphics.DrawString("Böhler Angle =", myFont, Brushes.Black, new Point(0, 0));
+                }
+
+                using (Font myFont = new Font("Arial", 30, FontStyle.Bold))
+                {
+                    e.Graphics.DrawString(BoehlerAngle + "°", myFont, Brushes.Black, new Point(45, 15));
+                }
+            }
+            
+        }
+
+        private  double DotProduct(double[] vec1, double[] vec2)
+        {
+            double tVal = 0;
+            for (int x = 0; x < vec1.Length; x++)
+            {
+                tVal += vec1[x] * vec2[x];
+            }
+            return tVal;
+        }
+
+        private double Magnitude(double[] vec)
+        {
+            double tVal = 0;
+            for (int x = 0; x < vec.Length; x++)
+            {
+                tVal += Math.Pow(vec[x], 2);
+            }
+            return Math.Sqrt(tVal);
+        }
+
+        private void HomeLinePosition()
+        {
+            GetInitialLinePosition();      
+
+            double imgAspectRatio = (double) img.Width / img.Height;
+            double pictureBoxAspectRatio = (double) pictureBox.Width / pictureBox.Height;
+
+            double xOffset = 0;
+            double yOffset = 0;
+            double ratio;
+
+            if (pictureBoxAspectRatio > imgAspectRatio)
+            {
+                ratio = (double)pictureBox.Height / img.Height;
+                xOffset = pictureBox.Width - img.Width * ratio;
+                xOffset /= 2;
+            }
+            else
+            {
+                ratio = (double)pictureBox.Width / img.Width; xOffset = 35;
+                yOffset = pictureBox.Height - img.Height * ratio;
+                yOffset /= 2;
+            }
+
+            for (int i=0; i<endpoints.Count(); i++)
+            {
+                double x = ratio * endpoints[i].Item1.Location.X;
+                double y = ratio * endpoints[i].Item1.Location.Y;
+                Rectangle rect1 = new Rectangle((int)(x + xOffset), (int)(y + yOffset), endpoints[i].Item1.Width, endpoints[i].Item1.Height);
+
+                x = ratio * endpoints[i].Item2.Location.X;
+                y = ratio * endpoints[i].Item2.Location.Y;
+                Rectangle rect2 = new Rectangle((int)(x + xOffset), (int)(y + yOffset), endpoints[i].Item2.Width, endpoints[i].Item2.Height);
+
+                endpoints[i] = Tuple.Create(rect1, rect2, endpoints[i].Item3);
+            }
+            GetPerpendicularLine();
+        }
+
+        private void GetInitialLinePosition()
+        {
+            this.UseWaitCursor = true;
+
+            //Rectangle rectJointLineL = new Rectangle(225, 456, 10, 10);
+            //Rectangle rectJointLineR = new Rectangle(360, 519, 10, 10);
+            //Rectangle centerLineDown = new Rectangle(267, 950, 10, 10);
+            //Rectangle centerLineUp = new Rectangle(284, 587, 10, 10);
+            
+            var psi = new ProcessStartInfo();
+            //psi.FileName = @"C:\Users\z00491jc\Desktop\private\CV\venv\Scripts\python.exe";
+            psi.FileName = @"C:\Users\Ahmed Waleed\Desktop\Ibrahim\project\venv\Scripts\python.exe";
+
+            //var script = @"C:\Users\z00491jc\Desktop\private\CV\IIML\Ibrahim\segmentation\predict.py";
+            var script = @"C:\Users\Ahmed Waleed\Desktop\Ibrahim\project\bone_segmentation_bohler_angle-master\segmentation\predict.py";
+
+            psi.Arguments = $"\"{script}\" \"{imgFilePath}\"";
+
+            psi.UseShellExecute = false;
+            psi.CreateNoWindow = true;
+            psi.RedirectStandardOutput = true;
+            psi.RedirectStandardError = true;
+
+            var error = "";
+            var results = "";
+
+            using (var process = Process.Start(psi))
+            {
+                results = process.StandardOutput.ReadToEnd();
+                error = process.StandardError.ReadToEnd();
+            }
+
+            string[] subs = results.Split(' ');
+            Rectangle rectJointLineL = new Rectangle(Convert.ToInt16(subs[0]), Convert.ToInt16(subs[1]), 10, 10);
+            Rectangle rectJointLineR = new Rectangle(Convert.ToInt16(subs[2]), Convert.ToInt16(subs[3]), 10, 10);
+            Rectangle centerLineDown = new Rectangle(Convert.ToInt16(subs[4]), Convert.ToInt16(subs[5]), 10, 10);
+            Rectangle centerLineUp = new Rectangle(Convert.ToInt16(subs[6]), Convert.ToInt16(subs[7]), 10, 10);
+
+            endpoints.Clear();
+            endpoints.Add(Tuple.Create(rectJointLineL, rectJointLineR, Color.Yellow));
+            endpoints.Add(Tuple.Create(centerLineDown, centerLineUp, Color.Blue));
+
+            Console.WriteLine("Hi here");
+
+            this.UseWaitCursor = false;
+
+        }
+
+        private void UpdateLinePosition()
+        {
+            GetInitialLinePosition();
+
+            for (int i = 0; i < endpoints.Count(); i++)
+            {
+                double x = zoomFactor * endpoints[i].Item1.Location.X;
+                double y = zoomFactor * endpoints[i].Item1.Location.Y;
+                Rectangle rect1 = new Rectangle((int)x, (int)y, endpoints[i].Item1.Width, endpoints[i].Item1.Height);
+
+                x = zoomFactor * endpoints[i].Item2.Location.X;
+                y = zoomFactor * endpoints[i].Item2.Location.Y;
+                Rectangle rect2 = new Rectangle((int)x, (int)y, endpoints[i].Item2.Width, endpoints[i].Item2.Height);
+
+                endpoints[i] = Tuple.Create(rect1, rect2, endpoints[i].Item3);
+            }
+            GetPerpendicularLine();
+        }
+
+        private void GetPerpendicularLine()
+        {
+            Point p1 = endpoints[1].Item1.Location;
+            Point p2 = endpoints[1].Item2.Location;
+            double slope;
+
+            slope = ((double)(p2.Y - p1.Y) / (double)(p2.X - p1.X));
+            if (slope !=0) { slope = -1 / slope; }
+            else { slope = 1; }
+            
+
+            double b = p2.Y - slope * p2.X;
+
+            Point L = new Point((int) p2.X + 100, (int)(slope * (p2.X + 100) + b));
+            Point R = new Point((int)p2.X - 100, (int)(slope * (p2.X - 100) + b));
+
+            Rectangle perpendicularLineL = new Rectangle(L.X, L.Y, 1, 1);
+            Rectangle perpendicularLineR = new Rectangle(R.X, R.Y, 1, 1);
+
+            if (endpoints.Count == 3)
+            {
+                endpoints[2] = Tuple.Create(perpendicularLineL, perpendicularLineR, endpoints[1].Item3);
+            }
+            else
+            {
+                endpoints.Add(Tuple.Create(perpendicularLineL, perpendicularLineR, endpoints[1].Item3));
+            }
+            
+        }
+
+        /*##################################################################################################################################*/
+        /*##########################################     Form Resizing     #################################################################*/
+        /*##################################################################################################################################*/
+
+        private void ResizeControl(Rectangle originCtrlRect, Control ctrl)
+        {
+            float xRatio = (float)(this.Width) / (formOriginSize.Width);
+            float yRatio = (float)(this.Height) / (formOriginSize.Height);
+
+            int newX = (int)(originCtrlRect.X * xRatio);
+            int newY = (int)(originCtrlRect.Y * yRatio);
+            int newWidth = (int)(originCtrlRect.Width * xRatio);
+            int newHeight = (int)(originCtrlRect.Height * yRatio);
+
+            ctrl.Location = new Point(newX, newY);
+            ctrl.Size = new Size(newWidth, newHeight);
+        }
+
+        private void ResizeChildrenControls()
+        {
+            ResizeControl(panelOriginRect, panel1);
+            ResizeControl(pictureBoxOriginRect, pictureBox);
+            ResizeControl(uploadBtnOriginRect, uploadImgBtn);
+            ResizeControl(startBtnOriginRect, startBtn);
+            ResizeControl(homeBtnOriginRect, homeBtn);
+            ResizeControl(zoomInBtnOriginRect, zoomInBtn);
+            ResizeControl(zoomOutBtnOriginRect, zoomOutBtn);
+            ResizeControl(saveBtnOriginRect, saveBtn);
+            ResizeControl(anglePictureBoxOriginRect, anglePictureBox);
+            ResizeControl(showLinesOriginRect, showLinesCheckBox);
+         
+        }
+
+        private void mainForm_SizeChanged(object sender, EventArgs e)
+        {
+            ResizeChildrenControls();
+            if (pictureBox.Image != null)
+            {
+                HomeLinePosition();
+                pictureBox.Refresh();
+            }
+            
+        }
+
+
+        /*##################################################################################################################################*/
+        /*##################################################     Timer     #################################################################*/
+        /*##################################################################################################################################*/
+
+        private void checkLastImgTimer_Tick(object sender, EventArgs e)
+        {
+            string folderName = Path.GetDirectoryName(imgFilePath);
+
+            int currNumFilesInDir = Directory.GetFiles(folderName, "*.*").Length;
+
+            if (currNumFilesInDir > numFilesInDir)
+            {
+                numFilesInDir = currNumFilesInDir;
+
+                var directory = new DirectoryInfo(folderName);
+                var myFile = (from f in directory.GetFiles("*.png")
+                              orderby f.LastWriteTime descending
+                              select f).First();
+
+                string temp = myFile.FullName;
+                if (temp.EndsWith("jpg") || temp.EndsWith("jpeg") || temp.EndsWith("png") || temp.EndsWith("bmp"))
+                {
+                    imgFilePath = temp;
+
+                    img = Image.FromFile(imgFilePath);
+                    pictureBox.Image = img;
+                    this.Text = "";
+                    this.Text += "MeasurementGUI -- " + imgFilePath;
+                    pictureBox.BackColor = this.BackColor;
+                    zoomFactor = 1;
+
+                    homeBtn.PerformClick();
+                    startBtn.PerformClick();
+                    homeBtn.PerformClick();
+                }
+            }
+        }
+
+
+        private void showLinesCheckBox_CheckedChanged(object sender, EventArgs e)
+        {
+            if (started)
+            {
+                if (showLinesCheckBox.Checked) { pictureBox.Refresh(); }
+                else
+                {
+                    if (zoomInEnabled || zoomOutEnabled) { pictureBox.Image = Zoom(img); }
+                    else { pictureBox.Image = img; }
+                    
+                }
+            }
+        }
+
+
+        /*##################################################################################################################################*/
+        /*##################################################      End     ##################################################################*/
+        /*##################################################################################################################################*/
+
 
     }
 }
